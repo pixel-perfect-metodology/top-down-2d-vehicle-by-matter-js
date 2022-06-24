@@ -1,0 +1,15 @@
+{
+  "name": "vehicle-2d-top-down-physics-by-matterjs-demo",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve",
+    "build": "echo This is a static template, there is no bundler or bundling involved!"
+  },
+  "author": "pixel-perfect-metodology",
+  "devDependencies": {
+    "serve": "^11.2.0"
+  },
+  "keywords": []
+}

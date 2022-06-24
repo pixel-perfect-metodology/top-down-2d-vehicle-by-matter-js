@@ -17,7 +17,7 @@ const render = Render.create({
     showVelocity: true,
     showCollisions: true,
     hasBounds: true,
-    background: "#666"
+    background: "#555"
   }
 })
 
@@ -115,8 +115,11 @@ const Transport = {
 const vehicleOne = Transport.Vehicle({ x: 450, y: 350, angle: degreeToRadians(120) })
 World.add(world, vehicleOne)
 
-const vehicleTwo = Transport.Vehicle({ x: 300, y: 450, angle: degreeToRadians(45) })
+const vehicleTwo = Transport.Vehicle({ x: 300, y: 450, angle: degreeToRadians(40) })
 World.add(world, vehicleTwo)
+
+const vehicleThree = Transport.Vehicle({ x: 420, y: 200, angle: degreeToRadians(-15) })
+World.add(world, vehicleThree)
 
 ///////
 const CONTROL_DRIVE_MODE_BY_VELOCITY = "by-velocity"
@@ -133,10 +136,9 @@ let brakePressed = false
 let useRearWheelsAsCenterOfRotation = false
 ///////
 
-const deceleration = 0.1
+const deceleration = 0.001
 const acceleration = 3
-// const brakingAcceleration = 0.5
-// const freeRollingAcceleration = 0.01
+const brakingDeceleration = 0.2
 const accelerationForce = 0.0055
 const maxRotationSpeed = degreeToRadians(1)
 const maxRotationSpeedOfWheel = degreeToRadians(30)
@@ -156,110 +158,41 @@ function driveByVelocity(vehicle) {
   let wheelAngle = vehicle.angle // todo move to change value func
   const speed = parseFloat(vehicle.speed.toFixed(3))
 
-  // free roam slowdown (free moving / rolling)
-  if (
-    (!upPressed && !downPressed) ||
-    (upPressed && downPressed) ||
-    (!upPressed && !downPressed && speed < 0.1 && speed > 0)
-  ) {
-    // forceY = 0
-    // forceX = 0
-    if (speed > 0) {
-      velX = (acceleration - deceleration) * Math.cos(degreeToRadians(wheelFrontLeftRotationAngle))
-      // velX = velYBasic - deceleration * Math.cos(degreeToRadians(wheelFrontLeftRotationAngle))
-      //(velX > 0 ? -deceleration : +deceleration)
-      //* Math.cos(degreeToRadians(wheelFrontLeftRotationAngle))
-      velY = (acceleration - deceleration) * Math.sin(degreeToRadians(wheelFrontLeftRotationAngle)) * -1
-      // velY = velYBasic - deceleration * Math.sin(degreeToRadians(wheelFrontLeftRotationAngle)) * -1
-      //(velY > 0 ? -deceleration : +deceleration)
-      // velY -= deceleration //* Math.cos(degreeToRadians(wheelFrontLeftRotationAngle)) * -1
-    }
-  }
-
-  /// version 2
   if (brakePressed) {
-    // velX -= brakingAcceleration
-    // velY -= brakingAcceleration
-    // // freeRollingAcceleration
-  }
-
-  // braking / reverse
-  ////////////////////////////
-  /// version 1
-  // if (downPressed) {
-  //   // forceY *= -1
-  //   // forceX *= -1
-  // }
-
-  /// version 2
-  if (downPressed) {
-    velY = -1 * velYBasic
-    velX = -1 * velXBasic
+    velY = velY * (1 - brakingDeceleration)
+    velX = velX * (1 - brakingDeceleration)
   } else if (upPressed) {
     velY = velYBasic
     velX = velXBasic
+  } else if (downPressed) {
+    velY = -1 * velYBasic
+    velX = -1 * velXBasic
+  } else {
+    // todo add this rule also for (upPressed && upPressed)
+    // todo should apply only for main axe
+    velY = velY * (1 - deceleration)
+    velX = velX * (1 - deceleration)
   }
 
   // steering
-  if (speed > 0) {
-    if (leftPressed) {
+  if (leftPressed) {
+    wheelAngle -= maxRotationSpeedOfWheel
+    if (speed >= 1) {
       angle -= maxRotationSpeed * (downPressed ? -1 : +1)
-      wheelAngle -= maxRotationSpeedOfWheel
     }
-    if (rightPressed) {
+  }
+  if (rightPressed) {
+    wheelAngle += maxRotationSpeedOfWheel
+    if (speed >= 1) {
       angle += maxRotationSpeed * (downPressed ? -1 : +1)
-      wheelAngle += maxRotationSpeedOfWheel
     }
   }
 
-  // /// version 1
-  // let centerOfRotation = vehicle.position
-  //
-  // if (leftPressed) {
-  //   // to left
-  //   centerOfRotation = wheelRearLeft.position
-  // } else {
-  //   // to right
-  //   centerOfRotation = wheelRearRight.position
-  // }
-  //
-  // const appliedForce = {
-  //   x: forceX,
-  //   y: forceY
-  // }
-  //
-  // Body.setAngle(wheelFrontLeft, wheelAngle)
-  // Body.setAngle(wheelFrontRight, wheelAngle)
-
-  // Body.applyForce(vehicle, centerOfRotation, appliedForce)
-  // Body.setAngle(vehicle, angle)
-
-  /// version 2
   Body.setAngle(wheelFrontLeft, wheelAngle)
   Body.setAngle(wheelFrontRight, wheelAngle)
 
-  // Body.applyForce(vehicle, centerOfRotation, appliedForce)
   Body.setVelocity(vehicle, { x: velX, y: velY })
   Body.setAngle(vehicle, angle)
-
-  /// dead code
-
-  // Body.setAngle(vehicle, angle)
-  // vehicle.angle = angle
-  // Body.setAngularVelocity(vehicle, angle)
-
-  // Body.setAngle(wheelFrontLeft, (25 / 180) * Math.PI)
-  // Body.setAngle(wheelFrontRight, (25 / 180) * Math.PI)
-
-  // Body.applyForce(vehicle, centerOfRotation, appliedForce)
-  // Body.setAngularVelocity(vehicle, 0.01)
-  // Body.setAngularVelocity(vehicle, angle)
-  // Body.setAngle(vehicle, pushRot)
-  // Body.setAngle(vehicle, angle)
-
-  // Body.setVelocity(player, {x:+accelearation, y:player.velocity.y})
-
-  // requestAnimationFrame(updateVehicle)
 }
 
 function driveByForce(vehicle) {
@@ -291,7 +224,7 @@ function driveByForce(vehicle) {
   }
 
   // steering
-  if (speed > 0) {
+  if (speed > 1) {
     if (leftPressed) {
       angle -= maxRotationSpeed * (downPressed ? -1 : +1)
       wheelAngle -= maxRotationSpeedOfWheel
@@ -312,10 +245,6 @@ function driveByForce(vehicle) {
       // to right
       centerOfRotation = wheelRearRight.position
     }
-
-    // if (centerOfRotation !== centerOfRotation) {
-    // console.log("useRearWheelsAsCenterOfRotation", useRearWheelsAsCenterOfRotation)
-    // }
   }
 
   const appliedForce = {
@@ -342,8 +271,6 @@ function driveVehicle(vehicle, controlDriveModeName) {
 
   controlDriveMode(vehicle)
 }
-
-// window.requestAnimationFrame(updateVehicle)
 
 let logData = {
   vehicleSpeed: activeVehicle.speed.toFixed(6),
@@ -445,6 +372,9 @@ window.addEventListener("keyup", function (e) {
   } else if (e.keyCode === 50) {
     // keyboard button "2'
     activeVehicle = vehicleTwo
+  } else if (e.keyCode === 51) {
+    // keyboard button "3'
+    activeVehicle = vehicleThree
   } else if (e.keyCode === 86) {
     // 'v'
     activeControlDriveMode = CONTROL_DRIVE_MODE_BY_VELOCITY

@@ -17,8 +17,8 @@ const render = Render.create({
     showVelocity: true,
     showCollisions: true,
     hasBounds: true,
-    background: "#555"
-  }
+    background: "#555",
+  },
 })
 
 engine.world.gravity.y = 0
@@ -41,9 +41,9 @@ const building = Bodies.rectangle(100, 300, 100, 400, {
     sprite: {
       texture: "/assets/building 1x.png",
       xScale: 1,
-      yScale: 1
-    }
-  }
+      yScale: 1,
+    },
+  },
 })
 World.add(world, building)
 
@@ -58,22 +58,22 @@ const Transport = {
     const wheelFrontLeft = Bodies.rectangle(-(wheelXOffset - 1), +wheelYOffset + 1, wheelWidth, wheelHight, {
       label: "wheelFrontLeft",
       isStatic: true,
-      render: { fillStyle: wheelTireColor }
+      render: { fillStyle: wheelTireColor },
     })
     const wheelFrontRight = Bodies.rectangle(+wheelXOffset, +wheelYOffset + 1, wheelWidth, wheelHight, {
       label: "wheelFrontRight",
       isStatic: true,
-      render: { fillStyle: wheelTireColor }
+      render: { fillStyle: wheelTireColor },
     })
     const wheelRearLeft = Bodies.rectangle(-(wheelXOffset - 1), -wheelYOffset, wheelWidth, wheelHight, {
       label: "wheelRearLeft",
       isStatic: true,
-      render: { fillStyle: wheelTireColor }
+      render: { fillStyle: wheelTireColor },
     })
     const wheelRearRight = Bodies.rectangle(+wheelXOffset, -wheelYOffset, wheelWidth, wheelHight, {
       label: "wheelRearRight",
       isStatic: true,
-      render: { fillStyle: wheelTireColor }
+      render: { fillStyle: wheelTireColor },
     })
 
     const body = Bodies.rectangle(+1, 0, 40, 80, {
@@ -84,9 +84,9 @@ const Transport = {
         sprite: {
           texture: "/assets/vehicle 1x.png",
           xScale: 1,
-          yScale: 1
-        }
-      }
+          yScale: 1,
+        },
+      },
     })
 
     const vehicle = Body.create({
@@ -94,7 +94,7 @@ const Transport = {
       parts: [wheelFrontLeft, wheelFrontRight, wheelRearLeft, wheelRearRight, body],
       friction: 0.01,
       frictionAir: 0.1,
-      restitution: 0
+      restitution: 0,
     })
 
     Body.set(vehicle, "vehicleComponents", {
@@ -102,14 +102,14 @@ const Transport = {
       wheelFrontRight,
       wheelRearLeft,
       wheelRearRight,
-      body
+      body,
     })
 
     Body.translate(vehicle, { x, y })
     Body.setAngle(vehicle, angle)
 
     return vehicle
-  }
+  },
 }
 
 const vehicleOne = Transport.Vehicle({ x: 450, y: 350, angle: degreeToRadians(120) })
@@ -141,11 +141,14 @@ const acceleration = 3
 const brakingDeceleration = 0.2
 const accelerationForce = 0.0055
 const maxRotationSpeed = degreeToRadians(1)
-const maxRotationSpeedOfWheel = degreeToRadians(30)
+const maxAngleOfWheel = degreeToRadians(30)
+const rotationOfWheelStep = 0.1
+const rotationOfWheelDelta = maxAngleOfWheel * rotationOfWheelStep
 
 function driveByVelocity(vehicle) {
   const { wheelFrontLeft, wheelFrontRight } = vehicle.vehicleComponents
 
+  const vehicleAngle = vehicle.angle
   let wheelFrontLeftRotationAngle = radiansToDegree(wheelFrontLeft.angle)
 
   let velYBasic = acceleration * Math.cos(degreeToRadians(wheelFrontLeftRotationAngle))
@@ -176,17 +179,42 @@ function driveByVelocity(vehicle) {
 
   // steering
   if (leftPressed) {
-    wheelAngle -= maxRotationSpeedOfWheel
+    wheelAngle -= maxAngleOfWheel
     if (speed >= 1) {
       angle -= maxRotationSpeed * (downPressed ? -1 : +1)
     }
   }
   if (rightPressed) {
-    wheelAngle += maxRotationSpeedOfWheel
+    wheelAngle += maxAngleOfWheel
     if (speed >= 1) {
       angle += maxRotationSpeed * (downPressed ? -1 : +1)
     }
   }
+  // if (speed > 1) {
+  //   // const nextWheelAngle = wheelAngle + rotationOfWheelDelta
+  //   // const maxWheelAngle = Math.abs(vehicleAngle - nextWheelAngle)
+  //   let wheelAngleDeltaOnNextStep = undefined
+
+  //   if ((leftPressed && rightPressed) || (!leftPressed && !rightPressed)) {
+  //     //noop
+  //   } else if (leftPressed) {
+  //     // vehicleAngle -= maxRotationSpeed * (downPressed ? -1 : +1)
+  //     wheelAngleDeltaOnNextStep = -rotationOfWheelDelta
+  //     // wheelAngle -= maxAngleOfWheel
+  //   } else if (rightPressed) {
+  //     // vehicleAngle += maxRotationSpeed * (downPressed ? -1 : +1)
+
+  //     // if(vehicleAngle - newWheelAngle < maxAngleOfWheel)
+  //     wheelAngleDeltaOnNextStep = +rotationOfWheelDelta
+  //     // wheelAngle += maxAngleOfWheel
+  //   }
+
+  //   const nextWheelAngle = wheelAngle + wheelAngleDeltaOnNextStep
+  //   const maxWheelAngleOnNextStep = Math.abs(vehicleAngle - nextWheelAngle)
+  //   if (maxWheelAngleOnNextStep <= maxAngleOfWheel) {
+  //     wheelAngle = nextWheelAngle
+  //   }
+  // }
 
   Body.setAngle(wheelFrontLeft, wheelAngle)
   Body.setAngle(wheelFrontRight, wheelAngle)
@@ -199,8 +227,8 @@ function driveByForce(vehicle) {
   const { wheelFrontLeft, wheelFrontRight, wheelRearLeft, wheelRearRight } = vehicle.vehicleComponents
 
   let wheelFrontLeftRotationAngle = radiansToDegree(wheelFrontLeft.angle)
-  let angle = vehicle.angle
-  let wheelAngle = vehicle.angle // todo move to change value func
+  let vehicleAngle = vehicle.angle
+  let wheelAngle = wheelFrontLeft.angle // todo move to change value func
 
   let forceY = accelerationForce * Math.cos(degreeToRadians(wheelFrontLeftRotationAngle))
   let forceX = accelerationForce * Math.sin(degreeToRadians(wheelFrontLeftRotationAngle)) * -1
@@ -224,15 +252,38 @@ function driveByForce(vehicle) {
   }
 
   // steering
-  if (speed > 1) {
-    if (leftPressed) {
-      angle -= maxRotationSpeed * (downPressed ? -1 : +1)
-      wheelAngle -= maxRotationSpeedOfWheel
+  // const nextWheelAngle = wheelAngle + rotationOfWheelDelta
+  // const maxWheelAngle = Math.abs(vehicleAngle - nextWheelAngle)
+  let wheelAngleDeltaOnNextStep = 0
+
+  if ((leftPressed && rightPressed) || (!leftPressed && !rightPressed)) {
+    //noop
+    const wheelAngleDiffirenceWithVehicleAngle = vehicleAngle - wheelAngle
+    if (Math.abs(wheelAngleDiffirenceWithVehicleAngle) > 0) {
+      wheelAngleDeltaOnNextStep =
+        wheelAngleDiffirenceWithVehicleAngle > 0 ? +rotationOfWheelDelta : -rotationOfWheelDelta
     }
-    if (rightPressed) {
-      angle += maxRotationSpeed * (downPressed ? -1 : +1)
-      wheelAngle += maxRotationSpeedOfWheel
+  } else if (leftPressed) {
+    if (speed > 1) {
+      vehicleAngle -= maxRotationSpeed * (downPressed ? -1 : +1)
     }
+
+    wheelAngleDeltaOnNextStep = -rotationOfWheelDelta
+    // wheelAngle -= maxAngleOfWheel
+  } else if (rightPressed) {
+    if (speed > 1) {
+      vehicleAngle += maxRotationSpeed * (downPressed ? -1 : +1)
+    }
+
+    // if(vehicleAngle - newWheelAngle < maxAngleOfWheel)
+    wheelAngleDeltaOnNextStep = +rotationOfWheelDelta
+    // wheelAngle += maxAngleOfWheel
+  }
+
+  const nextWheelAngle = wheelAngle + wheelAngleDeltaOnNextStep
+  const maxWheelAngleOnNextStep = Math.abs(vehicleAngle - nextWheelAngle)
+  if (maxWheelAngleOnNextStep <= maxAngleOfWheel) {
+    wheelAngle = nextWheelAngle
   }
 
   let centerOfRotation = vehicle.position
@@ -249,14 +300,14 @@ function driveByForce(vehicle) {
 
   const appliedForce = {
     x: forceX,
-    y: forceY
+    y: forceY,
   }
 
   Body.setAngle(wheelFrontLeft, wheelAngle)
   Body.setAngle(wheelFrontRight, wheelAngle)
 
   Body.applyForce(vehicle, centerOfRotation, appliedForce)
-  Body.setAngle(vehicle, angle)
+  Body.setAngle(vehicle, vehicleAngle)
 }
 
 function driveVehicle(vehicle, controlDriveModeName) {
@@ -274,7 +325,7 @@ function driveVehicle(vehicle, controlDriveModeName) {
 
 let logData = {
   vehicleSpeed: activeVehicle.speed.toFixed(6),
-  vehicleAngle: activeVehicle.angle.toFixed(6)
+  vehicleAngle: activeVehicle.angle.toFixed(6),
 }
 
 const logging = () => {
@@ -287,7 +338,7 @@ const logging = () => {
 
   logData = {
     vehicleSpeed,
-    vehicleAngle
+    vehicleAngle,
   }
 
   // console.log(`active vehicle _ speed: ${vehicleSpeed} angle: ${vehicleAngle}`)
@@ -406,7 +457,7 @@ Object.assign(window, {
   brakePressed,
 
   activeControlDriveMode,
-  useRearWheelsAsCenterOfRotation
+  useRearWheelsAsCenterOfRotation,
 })
 
 // // gui
